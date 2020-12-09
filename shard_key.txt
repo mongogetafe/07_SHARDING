@@ -1,0 +1,119 @@
+Shard key
+
+Es una clave indexada a nivel colección, usada por MongoDB en los shard cluster para distribuir los documentos
+entre los diferentes shard.
+
+- Si la colección ya existe antes de hacerla sharding.
+
+    Es obligatoría que tenga un índice con la misma clave (simple o compuesto).
+
+- Si la colección no existe, MongoDB crea un índice con la misma clave empleada en el shard.
+
+
+Funcionalidad:
+
+    - Distribuir los documentos a través de los shard (en unas agrupaciones lógicas llamadas chunks) en
+    las operaciones de escritura.
+
+    - Permite realizar operaciones "targeted" si la consulta especifica rangos que están dentro
+      de un solo shard.
+
+¿Como debe ser nuestra shard keys?
+
+    - Debe ser tal que su índice sea ampliamente usado por las consultas para conseguir operaciones targeted.
+
+    - Que distribuya uniformemente los docs en el sharding cluster.
+
+¿Qué propiedades deben cumplir nuestras shard keys para una correcta distribución?
+
+- Alta cardinalidad (número de valores iguales en los campos de los documentos).
+
+    - Ejemplo extremo de baja cardinalidad.
+        colección de usuarios en la que usamos el campo sexo como shard key.
+            - Hombre
+            - Mujer
+            - No desea contestar.
+
+    - Otro problema es que cuanto mas baja la cardinalidad mayor riesgo hay de exista alta frecuencia.
+
+- Baja frecuencia (número de veces que se repite un valor).
+
+    Ejemplo extremos de baja frecuencia (aunque tuviera alta cardinalidad)
+        colección de usarios en la que usamos el campo pais (más de 300 valores) y la mayoría de los
+        documentos tienen uno o dos valores.
+            - España 1.000.000
+            - Portugal 200.000
+            - Resto de paises (en diferentes valores) 1.000
+
+- Evitar cambios monótonos.
+    Cuando hay un incremento o decremento sucesivo y constante en los valores del campo.
+    - Las operaciones de escritura siempre se van a ir a un chunk extremo de los rangos
+      lo que propriciará migraciones constantes.
+
+¿Como podemos cumplir estás condiciones? 
+
+- Usar shard keys compuestas. Aumenta la posibilidad de cumplir con las 3 recomendaciones
+  y también aumenta el número de consultas targeted.
+
+- Hashed shard key (al campo se le pasa el valor "hash").
+   Utilizan un índice de tipo hash. Sustituye el valor del campo por el resultado de una función hash en el índice
+   para romper los valores monótonos.
+
+        -Desventajas. 
+            - Consultas distribuidas cuando usamos ranfos próximos.
+            - Los índices Hash no pueden ser campos de tipo array.
+            - Se pierde la posibilidad de usar zones.
+
+- Desde MongoDB 4.2 se pueden usar campos con índice hash junto con campos sin índice hash.
+
+Problemas posteriores a la elección de la shard key.
+
+- La shard key no se puede modificar una vez creada. Solamente (desde MongoDB 4.2) se puede ampliar
+  o extender.
+        - Podremos añadir campos a la shard key pero como sufijos.
+
+            Actual {dni: 1, edad: -1}
+            Nueva {dni: 1, edad: -1, nuevoCampo1: 1 | -1, ...}
+
+Por ejemplo:
+
+Creamos previamente el índice:
+
+db.participantes.createIndex({edad: 1, apellido1: 1})
+
+Y añadimos un campo a nuestra shard key:
+
+db.adminCommand({
+    refineCollectionShardKey: "maraton.participantes",
+    key: {edad: 1, apellido1: 1}
+})
+
+Índices únicos y shard key.
+
+Si la colección está sharding, solo los siguientes índices pueden ser únicos:
+
+- El índice de la shard key.
+- Un índice compuesto donde la shard key sea prefijo.
+- El índice único _id lo será siempre esté o no el campo en la shard key.
+
+Índice del campo _id
+
+- Si la colección sharding no contiene en su shard key al campo _id, solo
+se asegura la unicidad del campo a nivel de shard.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

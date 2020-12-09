@@ -1,0 +1,15 @@
+Introducción a Sharding
+
+- Arquitectura distribuida de los cluster de servidores de bases de datos de MongoDB en la que
+  los datos de una colección se repartidos entre los diferentes shards para escalar horizontalmente
+  nuestros sistemas.
+
+- Componentes del sharding en MongoDB
+
+    - Shards (Tienen que ser replica set)
+    - Config server (Tiene que se replica set)
+    - Mongos servidor o proceso que enruta las peticiones de cada aplicación a cada shard
+      de acuerdo a la info almacenada en el config server.
+
+- Chunk. Mecanismo de migración de datos de un shard a otro para balancear la colección 
+   en todos ellos.
